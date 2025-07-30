@@ -17,6 +17,7 @@ searchForm.addEventListener('submit', (event) => {
     }
 });
 
+const forecastContainer = document.querySelector('#forecast-container'); // พยากรณ์อากาศล่วงหน้า
 
 async function getWeather(city) {
     weatherInfoContainer.innerHTML = `<p>กำลังโหลดข้อมูล...</p>`;
@@ -33,6 +34,8 @@ async function getWeather(city) {
         const data = await response.json();
         localStorage.setItem('lastCity', city);// บันทึกชื่อเมืองล่าสุด
         displayWeather(data);
+
+        getForecast(city);// เรียกดูพยากรณ์อากาศล่วงหน้า
     } catch (error) {
         weatherInfoContainer.innerHTML = `<p class="error">${error.message}</p>`;
     }
@@ -110,6 +113,45 @@ function renderWeatherAnimation(weatherMain) {
         const cloud = document.createElement('div');
         cloud.className = 'cloud-shape';
         container.appendChild(cloud);
+    }
+}
+
+
+
+// ฟังก์ชันสำหรับดึงพยากรณ์อากาศล่วงหน้า
+async function getForecast(city) {
+    forecastContainer.innerHTML = `<p>กำลังโหลดพยากรณ์...</p>`;
+    const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${apiKey}&units=metric&lang=th`;
+
+    try {
+        const response = await fetch(forecastUrl);
+        if (!response.ok) throw new Error('ไม่พบข้อมูลพยากรณ์');
+
+        const data = await response.json();
+
+        //กรองข้อมูลให้เหลือเวลา 12:00 ของแต่ละวัน
+        const dailyForecast = data.list.filter(item => item.dt_txt.includes("12:00:00"));
+
+        let forecastHTML = `<div class="forecast-grid">`;
+        dailyForecast.forEach(day => {
+            const date = new Date(day.dt * 1000);
+            const options = { weekday: 'short', day: 'numeric', month: 'short' };
+            const dayName = date.toLocaleDateString('th-TH', options);
+
+            forecastHTML += `
+                <div class="forecast-day">
+                    <h4>${dayName}</h4>
+                    <img src="https://openweathermap.org/img/wn/${day.weather[0].icon}.png" alt="${day.weather[0].description}">
+                    <p>${day.main.temp.toFixed(1)}°C</p>
+                    <p>${day.weather[0].description}</p>
+                </div>
+            `;
+        });
+        forecastHTML += `</div>`;
+        forecastContainer.innerHTML = forecastHTML;
+
+    } catch (error) {
+        forecastContainer.innerHTML = `<p class="error">${error.message}</p>`;
     }
 }
 
